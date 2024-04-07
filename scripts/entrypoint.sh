@@ -39,14 +39,38 @@ function prepare_intf() {
    ip link set dev $2 up
 }
 
+prepare_qemu_ifup_script() {
+   local bridge=$1
+   local path="$HOME/qemu_ifup_$bridge"
+
+   echo "#!/usr/bin/env bash" >"$path"
+   echo "ip link set dev \$1 up" >>"$path"
+   echo "ip link set dev \$1 master $bridge" >>"$path"
+   chmod +x "$path"
+
+   echo "$path"
+}
+
+prepare_qemu_ifdown_script() {
+   local bridge=$1
+   local path="$HOME/qemu_ifdown_$bridge"
+
+   echo "#!/usr/bin/env bash" >"$path"
+   echo "ip link set dev \$1 nomaster" >>"$path"
+   echo "ip link set dev \$1 down" >>"$path"
+   chmod +x "$path"
+
+   echo "$path"
+}
+
 # Prepare network interfaces
 nic_opts=()
 for ((i = 1; i <= number_of_interfaces; i++)); do
    qemu_bridge="qemubr$i"
    dev="eth$((i - 1))"
    qemu_id="qemu$i"
-   qemu_ifup="/routeros/qemu-ifup$i"
-   qemu_ifdown="/routeros/qemu-ifdown$i"
+   qemu_ifup=$(prepare_qemu_ifup_script "$qemu_bridge")
+   qemu_ifdown=$(prepare_qemu_ifdown_script "$qemu_bridge")
    mac="54:05:AB:CD:12:3$i"
 
    prepare_intf "$dev" "$qemu_bridge"
