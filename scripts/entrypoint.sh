@@ -8,7 +8,7 @@ entrypoint_for_docker_8interfaces.sh)
    number_of_interfaces=8
    ;;
 *)
-   number_of_interfaces=1
+   number_of_interfaces=${NUM_INTERFACES:-1}
    ;;
 esac
 
