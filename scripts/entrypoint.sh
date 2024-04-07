@@ -71,7 +71,7 @@ for ((i = 1; i <= number_of_interfaces; i++)); do
    qemu_id="qemu$i"
    qemu_ifup=$(prepare_qemu_ifup_script "$qemu_bridge")
    qemu_ifdown=$(prepare_qemu_ifdown_script "$qemu_bridge")
-   mac="54:05:AB:CD:12:3$i"
+   mac="54:05:AB:CD:12:$(printf %X $((16 + i)))"
 
    prepare_intf "$dev" "$qemu_bridge"
    nic_opts+=(-nic "tap,id=${qemu_id},mac=$mac,script=$qemu_ifup,downscript=$qemu_ifdown")
