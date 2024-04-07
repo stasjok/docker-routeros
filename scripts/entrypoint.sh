@@ -105,7 +105,7 @@ exec qemu-system-x86_64 \
    -serial mon:stdio \
    -nographic \
    -m 512 \
-   -smp 4,sockets=1,cores=4,threads=1 \
+   -smp "${NUM_CPU:-$(nproc)}" \
    -cpu host$CPU_FEATURES \
    $KVM_OPTS \
    "${nic_opts[@]}" \
