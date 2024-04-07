@@ -80,17 +80,11 @@ done
 # Finally, start our DHCPD server
 udhcpd -I $DUMMY_DHCPD_IP -f $DHCPD_CONF_FILE &
 
-CPU_FEATURES=""
-KVM_OPTS=""
-if [ -e /dev/kvm ]; then
-   if grep -q -e vmx -e svm /proc/cpuinfo; then
-      echo "Enabling KVM"
-      CPU_FEATURES=",kvm=on"
-      KVM_OPTS="-machine accel=kvm -enable-kvm"
-   fi
-fi
-
-if [ "$CPU_FEATURES" = "" ]; then
+kvm_opts=()
+if [ -e /dev/kvm ] && grep -q -e vmx -e svm /proc/cpuinfo; then
+   echo "Enabling KVM"
+   kvm_opts+=(-cpu "host,kvm=on" -machine accel=kvm -enable-kvm)
+else
    echo "KVM not available, running in emulation mode. This will be slow."
 fi
 
@@ -106,8 +100,7 @@ exec qemu-system-x86_64 \
    -nographic \
    -m 512 \
    -smp "${NUM_CPU:-$(nproc)}" \
-   -cpu host$CPU_FEATURES \
-   $KVM_OPTS \
+   "${kvm_opts[@]}" \
    "${nic_opts[@]}" \
    "$@" \
    -hda $ROUTEROS_IMAGE
