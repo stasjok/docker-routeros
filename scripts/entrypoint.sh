@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
 
-QEMU_BRIDGE_ETH1='qemubr1'
-default_dev1='eth0'
+case ${0##*/} in
+entrypoint_with_four_interfaces.sh)
+   number_of_interfaces=4
+   ;;
+entrypoint_for_docker_8interfaces.sh)
+   number_of_interfaces=8
+   ;;
+*)
+   number_of_interfaces=1
+   ;;
+esac
+
+QEMU_BRIDGE_PREFIX=qemubr
 
 # DHCPD must have an IP address to run, but that address doesn't have to
 # be valid. This is the dummy address dhcpd is configured to use.
 DUMMY_DHCPD_IP='10.0.0.1'
-
-# These scripts configure/deconfigure the VM interface on the bridge.
-QEMU_IFUP='/routeros/qemu-ifup'
-QEMU_IFDOWN='/routeros/qemu-ifdown'
 
 # The name of the dhcpd config file we make
 DHCPD_CONF_FILE='/routeros/dhcpd.conf'
@@ -18,7 +25,7 @@ DHCPD_CONF_FILE='/routeros/dhcpd.conf'
 # with the interfaces. We start by generating the DHCPD config file based
 # on our current address/routes. We "steal" the container's IP, and lease
 # it to the VM once it starts up.
-/routeros/generate-dhcpd-conf.py $QEMU_BRIDGE_ETH1 >$DHCPD_CONF_FILE
+/routeros/generate-dhcpd-conf.py ${QEMU_BRIDGE_PREFIX}1 >$DHCPD_CONF_FILE
 
 function prepare_intf() {
    #First we clear out the IP address and route
@@ -32,7 +39,20 @@ function prepare_intf() {
    ip link set dev $2 up
 }
 
-prepare_intf $default_dev1 $QEMU_BRIDGE_ETH1
+# Prepare network interfaces
+nic_opts=()
+for ((i = 1; i <= number_of_interfaces; i++)); do
+   qemu_bridge="qemubr$i"
+   dev="eth$((i - 1))"
+   qemu_id="qemu$i"
+   qemu_ifup="/routeros/qemu-ifup$i"
+   qemu_ifdown="/routeros/qemu-ifdown$i"
+   mac="54:05:AB:CD:12:3$i"
+
+   prepare_intf "$dev" "$qemu_bridge"
+   nic_opts+=(-nic "tap,id=${qemu_id},mac=$mac,script=$qemu_ifup,downscript=$qemu_ifdown")
+done
+
 # Finally, start our DHCPD server
 udhcpd -I $DUMMY_DHCPD_IP -f $DHCPD_CONF_FILE &
 
@@ -64,6 +84,6 @@ exec qemu-system-x86_64 \
    -smp 4,sockets=1,cores=4,threads=1 \
    -cpu host$CPU_FEATURES \
    $KVM_OPTS \
-   -nic tap,id=qemu1,mac=54:05:AB:CD:12:31,script=$QEMU_IFUP,downscript=$QEMU_IFDOWN \
+   "${nic_opts[@]}" \
    "$@" \
    -hda $ROUTEROS_IMAGE
