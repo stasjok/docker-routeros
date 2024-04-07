@@ -3,49 +3,50 @@ Docker container to run Mikrotik RouterOS
 ### Usage
 
 ```
+docker build -t routeros https://github.com/stasjok/docker-routeros.git
 docker run -d --rm \
   --cap-add=NET_ADMIN \
-  -v /dev/net/tun:/dev/net/tun \
+  --device=/dev/net/tun \
   -p 2222:22   \
+  -p 443:443 \
+  -p 8291:8291 \
   -p 8728:8728 \
   -p 8729:8729 \
-  -p 5900:5900 \
   --name routeros-$(head -c 4 /dev/urandom | xxd -p)-$(date +'%Y%m%d-%H%M%S') \
-vaerhme/routeros:latest
+  routeros
 ```
+
 docker-compose
+
 ```
 version: "3"
 
 services:
   routeros:
-    image: vaerh/routeros:latest
-    privileged: true
+    image: routeros:latest
+    build:
+      context: https://github.com/stasjok/docker-routeros.git
+      # Override RouterOS version
+      # args:
+      #   ROUTEROS_VERSION: 7.12.2
     restart: unless-stopped
-    # 8 interfaces
-    entrypoint: /routeros/entrypoint_for_docker_8interfaces.sh
+    environment:
+      NUM_INTERFACES: 4
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun
+      - /dev/kvm
     ports:
+      - "443:443"
       - "8291:8291"
-      - "22222:22"
-      - "22223:23"
-      - "7777:80"
       - "8728:8728"
       - "8729:8729"
-      - "28728:8728"
-      - "28729:8729"
 ```
 
-## Docker Hub Pages: 
-* https://hub.docker.com/r/vaerh/routeros
-* https://hub.docker.com/r/vaerhme/routeros
-
 ### Notes
-Now you can connect to your RouterOS container via VNC protocol
-(on localhost 5900 port) and via SSH (on localhost 2222 port).
+
+Now you can connect to your RouterOS container via SSH (on 2222 port) or WinBox.
 
 ## List of exposed ports
 
@@ -58,6 +59,8 @@ Now you can connect to your RouterOS container via VNC protocol
 | PPTP        | 1723 |
 
 ## Links
-* https://github.com/EvilFreelancer/docker-routeros
-* https://github.com/joshkunz/qemu-docker
-* https://github.com/ennweb/docker-kvm
+
+- https://github.com/vaerh/docker-routeros
+- https://github.com/EvilFreelancer/docker-routeros
+- https://github.com/joshkunz/qemu-docker
+- https://github.com/ennweb/docker-kvm
